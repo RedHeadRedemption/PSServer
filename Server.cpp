@@ -39,7 +39,8 @@ void Server::StartStreaming()
 	{
 		try
 		{
-			char recvMSG[1024];
+			char recvMSG[4096];
+			ZeroMemory(recvMSG, 4096);
 			int packetLength = recv(_clientSocket, recvMSG, sizeof(recvMSG), NULL);
 			if (packetLength <= 0)
 			{
@@ -51,11 +52,19 @@ void Server::StartStreaming()
 			std::cout << "Client " << int(this) << " sent " << recvMSG[0] << std::endl;
 
 			if (recvMSG[0] == 'H')
-			{	
-				char _sendString[1024] = "\nHello from WAV streamer!\n";
+			{
+				std::string hello = "\nHello from WAV streamer!\n";
+
+				
+				//char _sendString[1024] = "\nHello from WAV streamer!\n";
 
 				std::cout << recvMSG << int(this) << std::endl;
-				send(_clientSocket, _sendString, sizeof(_sendString), 0);
+				//send(_clientSocket, _sendString, sizeof(_sendString), 0);
+				send(_clientSocket, hello.c_str(), sizeof(hello) + 1, 0);
+
+				std::cout << sizeof(hello) << std::endl;
+
+				//ZeroMemory(recvMSG, 32);
 			}
 			if (recvMSG[0] == 'L')
 			{
@@ -68,10 +77,16 @@ void Server::StartStreaming()
 					serialList = serialList + _playList[i] + L'|';
 				}
 
+				//serialList = serialList + L"\n";
 				std::cout << recvMSG << std::endl;
 				std::wcout << serialList << std::endl;
-				send(_clientSocket, (char*)serialList.c_str(), sizeof(serialList) + 16, 0);
-				std::cout << sizeof(serialList) << std::endl;
+
+				wchar_t _sendString[4096];
+				wcscpy(_sendString, serialList.c_str());
+				int length = send(_clientSocket, (char*)_sendString, sizeof(_sendString) + 1, 0); // + 16
+				std::cout << sizeof(_sendString) << std::endl;
+
+				//ZeroMemory(recvMSG, 32);
 			}
 			if (recvMSG[0] == '1' || recvMSG[0] == '2') {
 
@@ -94,30 +109,32 @@ void Server::StartStreaming()
 					//recvMSG;
 
 					//Call method to get the file size in bytes and prepare it for streaming
-					std::wstring name = getFileName(point, "C:\\Users\\Panayotis\\Documents\\Mysongs\\*.wav");
 
-					std::wcout << "Opening Direct Loader" << std::endl;
+					std::wstring name = getFileName(point, ".\\*.wav");
+					//std::wstring name = getFileName(point, "C:\\Users\\User\\Documents\\Storage\\*.wav");
 
 					DirectSoundLoad mainLoader(name);
 
 					std::string trackInfo = "\nFile name: ";
 
 					std::cout << trackInfo;
-
 					std::wcout << name << endl;
 
-					trackInfo = "Average Bytes Per Second:" + std::to_string(mainLoader.getAvgBPS());
-					
+					trackInfo = std::to_string(mainLoader.getSize()) + '|' + std::to_string(mainLoader.getChunkSize()) + '|' + std::to_string(mainLoader.getSampleRate()) + '|' + std::to_string(mainLoader.getAvgBPS()) + '|' + std::to_string(mainLoader.getDataSize()) + '|';
+					trackInfo = trackInfo + std::to_string(mainLoader.getFormatType()) + '|' +  std::to_string(mainLoader.getChannels()) + '|' + std::to_string(mainLoader.getBytesPerSample()) + '|' + std::to_string(mainLoader.getBitsPerSample());
+
 					std::cout << trackInfo << endl;
 
-					std::string toSend = std::to_string(mainLoader.getAvgBPS());
+					std::string toSend = trackInfo;
 
 					std::cout << "Sending message:" << toSend.c_str() << std::endl;
-					
+
+					char _sendString[4096];
+					strcpy(_sendString, toSend.c_str());
 					
 					//SendData(toSend.c_str(), sizeof(toSend));
 
-					int songData = send(_clientSocket, toSend.c_str(), sizeof(toSend), 0);
+					int songData = send(_clientSocket, toSend.c_str(), sizeof(toSend) + 1, 0);
 				
 				}
 				else
@@ -125,7 +142,10 @@ void Server::StartStreaming()
 					std::string trackInfo = "\nSorry, this file doesn't exist in the list anymore.";
 					send(_clientSocket, trackInfo.c_str(), 1024, 0);
 				}
+			
 			}
+			//delete[] recvMSG;
+
 			recvMSG[0] = '\0';
 		}
 		catch (...)
@@ -250,7 +270,7 @@ std::vector<std::wstring> Server::GetTheList()
 // Retreives all the contents from the music directory
 std::vector<std::wstring> Server::getListOfTracks(std::string folder)
 {
-	const char* filePath = "C:\\Users\\Panayotis\\Documents\\Mysongs\\*.wav";
+	const char* filePath = ".\\*.wav";
 
 	std::vector<std::wstring> contents;
 
@@ -297,7 +317,8 @@ std::string Server::WindowsPathToForwardSlashes()
 	GetModuleFileName(NULL, buffer, MAX_PATH);
 	std::string::size_type fullPath = std::string(buffer).find_last_of("\\/");
 
-	std::string windowsPath = std::string(buffer).substr(0, fullPath) ; /* +"\\tracks\\*" */
+	std::string windowsPath = std::string(buffer).substr(0, fullPath);
+		//+ "\\tracks\\*";
 
 	std::vector<std::string> spitList;
 	std::string fixedPath;
@@ -337,7 +358,7 @@ std::vector<std::string> Server::Split(std::string stringToSplit, char delimeter
 
 std::wstring Server::getFileName(int point, std::string folder) {
 
-	const char* filePath = "C:\\Users\\Panayotis\\Documents\\Mysongs\\*.wav";
+	const char* filePath = ".\\*.wav";
 
 	std::vector<std::wstring> contents;
 
