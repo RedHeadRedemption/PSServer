@@ -33,7 +33,6 @@ private:
 	BYTE* dataBuffer = nullptr;
 	DWORD dataBufferSize;
 
-	char type[4];
 	DWORD size;
 	WORD chunkSize;
 	short formatType, channels;

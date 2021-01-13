@@ -291,7 +291,9 @@ const char* DirectSoundLoad::fromStringToChar(std::wstring wideString) {
 void DirectSoundLoad::readWaveFile(std::wstring name) {
 
 	FILE* fp = NULL;
+	char type[4];
 
+	type[3] = '\0';
 	const char* fileName = fromStringToChar(name);
 
 	std::cout << fileName << std::endl;
@@ -304,25 +306,29 @@ void DirectSoundLoad::readWaveFile(std::wstring name) {
 
 	fread(type, sizeof(char), 4, fp);
 
-	//if (!strcmp(type, "RIFF")) {
+    if (strcmp(type, "RIFF")) {
 
-	//	cout << type << endl;
+		cout << "Type: " << type << endl;
 
 	//	endWithError("Error: Not RIFF format!");
-	//}
+	}
 
 	fread(&size, sizeof(DWORD), 1, fp);
 
 	fread(type, sizeof(char), 4, fp);
 
-	if (!strcmp(type, "WAVE")) {
-		endWithError("Error: Not WAVE format!");
+	if (strcmp(type, "WAVE")) {
+
+		cout << "Type: " << type << endl;
+		//endWithError("Error: Not WAVE format!");
 	}
 
 	fread(type, sizeof(char), 4, fp);
 
-	if (!strcmp(type, "fmt")) {
-		endWithError("Error: No FMT found!");
+	if (strcmp(type, "fmt")) {
+
+		cout << "Type: " << type << endl;
+		//endWithError("Error: No FMT found!");
 	}
 
 	fread(&chunkSize, sizeof(DWORD), 1, fp);
