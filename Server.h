@@ -5,6 +5,10 @@
 #include <vector>
 #include <string>
 #include <sstream>
+#include <mmsystem.h>
+#include <mmreg.h>
+#include <dsound.h>
+#include <cstdlib>
 #include <iostream>
 #include <fileapi.h>
 #include <fstream>
@@ -22,7 +26,36 @@ public:
 
 	void StartStreaming();
 
+	HRESULT FindChunk(HANDLE fileHandle, FOURCC fourcc, DWORD& chunkSize, DWORD& chunkDataPosition);
+
+	HRESULT ReadChunkData(HANDLE fileHandle, void* buffer, DWORD buffersize, DWORD bufferoffset);
+
+	bool Initialise(DirectSoundLoad obj);
+
+	void Shutdown();
+
+	bool LoadWaveFile(TCHAR* filename);
+
+	void ReleaseSecondaryBuffer();
+
+	const char* fromStringToChar(std::wstring wideString);
+
+
 private:
+#define fourccRIFF MAKEFOURCC('R', 'I', 'F', 'F')
+#define fourccDATA MAKEFOURCC('d', 'a', 't', 'a')
+#define fourccFMT  MAKEFOURCC('f', 'm', 't', ' ')
+#define fourccWAVE MAKEFOURCC('W', 'A', 'V', 'E')
+#define fourccXWMA MAKEFOURCC('X', 'W', 'M', 'A')
+
+	IDirectSound8* directSound = nullptr;
+	IDirectSoundBuffer* primaryBuffer = nullptr;
+	IDirectSoundBuffer8* secondaryBuffer = nullptr;
+	BYTE* dataBuffer = nullptr;
+	DWORD dataBufferSize;
+
+	std::wstring fileName;
+
 	SOCKET _clientSocket;
 	static void StaticStartStreaming(LPVOID param);
 	char _sendString[1024];
