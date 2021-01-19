@@ -34,7 +34,7 @@ public:
 
 	void Shutdown();
 
-	bool LoadWaveFile(TCHAR* filename);
+	bool LoadWaveFile(const char* filename);
 
 	void ReleaseSecondaryBuffer();
 

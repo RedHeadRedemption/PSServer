@@ -149,13 +149,18 @@ void Server::StartStreaming()
 
 				DirectSoundLoad mainLoader(fileName);
 
-				std::wstring pathName = L".\\" + fileName;
-				const char* nameIn = fromStringToChar(pathName);
-				//TCHAR* extended_name = TEXT(nameIn);
-				//const char* nameIn = fromStringToChar(pathName);
-				char* newName = const_cast<char*>(nameIn);
+				std::wstring wpathName = L".\\" + fileName;
 
-				std::cout << newName << std::endl;
+				std::string pathName(wpathName.begin(), wpathName.end());
+				//const char* nameIn = fromStringToChar(pathName);
+				//wchar_t* w_nameIn;
+
+				//mbtowc(w_nameIn, nameIn, sizeof(nameIn));
+				//TCHAR* extended_name = w_nameIn;
+				//const char* nameIn = fromStringToChar(pathName);
+				//char* newName = const_cast<char*>(nameIn);
+
+				std::cout << pathName.c_str() << std::endl;
 				bool result;
 
 				result = Initialise(mainLoader);
@@ -172,7 +177,7 @@ void Server::StartStreaming()
 
 					std::cout << "DirectSound initialization success" << std::endl;
 
-					result = LoadWaveFile(newName);
+					result = LoadWaveFile(pathName.c_str());
 
 					if (!result)
 					{
@@ -538,7 +543,7 @@ bool Server::Initialise(DirectSoundLoad obj) {
 		}
 	}
 
-	bool Server::LoadWaveFile(TCHAR * filename) {
+	bool Server::LoadWaveFile(const char* filename) {
 		WAVEFORMATEXTENSIBLE wfx = { 0 };
 		WAVEFORMATEX waveFormat;
 		DSBUFFERDESC bufferDesc;
@@ -550,7 +555,7 @@ bool Server::Initialise(DirectSoundLoad obj) {
 		DWORD filetype;
 		HRESULT hr = S_OK;
 
-		std::wcout << L"File Name: " << filename << std::endl;
+		std::cout << "File Name: " << filename << std::endl;
 
 		// Open the wave file
 		HANDLE fileHandle = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
