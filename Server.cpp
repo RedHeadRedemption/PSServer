@@ -610,7 +610,6 @@ bool Server::Initialise(DirectSoundLoad obj) {
 		// this example, we setup a buffer the same size as that of the audio data.  For the assignment, your
 		// secondary buffer should only be large enough to hold approximately four seconds of data. 
 		bufferDesc.dwSize = sizeof(DSBUFFERDESC);
-
 		bufferDesc.dwFlags = DSBCAPS_CTRLVOLUME | DSBCAPS_GLOBALFOCUS | DSBCAPS_CTRLPOSITIONNOTIFY;
 		bufferDesc.dwBufferBytes = waveFormat.nAvgBytesPerSec * 4;
 		//dataBufferSize;
