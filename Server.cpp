@@ -151,9 +151,9 @@ void Server::StartStreaming()
 
 				std::wstring pathName = L".\\" + fileName;
 				const char* nameIn = fromStringToChar(pathName);
-				TCHAR* extended_name = TEXT(nameIn);
+				//TCHAR* extended_name = TEXT(nameIn);
 				//const char* nameIn = fromStringToChar(pathName);
-				//char* newName = const_cast<char*>(nameIn);
+				char* newName = const_cast<char*>(nameIn);
 
 				std::cout << newName << std::endl;
 				bool result;
