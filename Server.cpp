@@ -173,6 +173,7 @@ void Server::StartStreaming()
 						int errorSend = send(_clientSocket, error.c_str(), sizeof(error) + 1, 0);
 
 						Shutdown();
+						break;
 				     }
 
 					std::cout << "DirectSound initialization success" << std::endl;
@@ -188,7 +189,7 @@ void Server::StartStreaming()
 						int errorSend = send(_clientSocket, error.c_str(), sizeof(error) + 1, 0);
 
 						Shutdown();
-						
+						break;
 					}
 
 					int byteSend = send(_clientSocket, reinterpret_cast<char*>(dataBuffer), sizeof(&dataBuffer), 0);
@@ -461,6 +462,7 @@ std::wstring Server::getFileName(int point, std::string folder) {
 
 
 bool Server::Initialise(DirectSoundLoad obj) {
+
 		HRESULT result;
 		DSBUFFERDESC bufferDesc;
 		WAVEFORMATEX waveFormat;
@@ -469,6 +471,7 @@ bool Server::Initialise(DirectSoundLoad obj) {
 		result = DirectSoundCreate8(NULL, &directSound, NULL);
 		if (FAILED(result))
 		{
+			std::cout << "Failed to initialize pointer for sound device." << std::endl;
 			return false;
 		}
 
@@ -478,13 +481,14 @@ bool Server::Initialise(DirectSoundLoad obj) {
 		result = directSound->SetCooperativeLevel(GetDesktopWindow(), DSSCL_PRIORITY);
 		if (FAILED(result))
 		{
+			std::cout << "Failed to set priority." << std::endl;
 			return false;
 		}
 
 		// Setup the primary buffer description.
 		bufferDesc.dwSize = sizeof(DSBUFFERDESC);
 		bufferDesc.dwFlags = DSBCAPS_PRIMARYBUFFER | DSBCAPS_CTRLVOLUME;
-		bufferDesc.dwBufferBytes = obj.getDataSize();
+		bufferDesc.dwBufferBytes = 0;
 		bufferDesc.dwReserved = 0;
 		bufferDesc.lpwfxFormat = NULL;
 		bufferDesc.guid3DAlgorithm = GUID_NULL;
@@ -493,7 +497,8 @@ bool Server::Initialise(DirectSoundLoad obj) {
 		result = directSound->CreateSoundBuffer(&bufferDesc, &primaryBuffer, NULL);
 		if (FAILED(result))
 		{
-			return false;
+			std::cout << "Failed to get control of primary buffer." << std::endl;
+			return false; 
 		}
 
 		// Setup the format of the primary sound bufffer.
@@ -515,6 +520,7 @@ bool Server::Initialise(DirectSoundLoad obj) {
 		result = primaryBuffer->SetFormat(&waveFormat);
 		if (FAILED(result))
 		{
+			std::cout << "Failed to set buffer to wave format." << std::endl;
 			return false;
 		}
 		return true;
@@ -615,7 +621,7 @@ bool Server::Initialise(DirectSoundLoad obj) {
 		result = directSound->CreateSoundBuffer(&bufferDesc, &tempBuffer, NULL);
 		if (FAILED(result))
 		{
-			std::cout << "Unable to create temporary buffer" << std::endl;
+			// std::cout << "Unable to create temporary buffer" << std::endl;
 			return false;
 		}
 
