@@ -1,6 +1,10 @@
+#define _WINSOCK_DEPRECATED_NO_WARNINGS 
+#define _CRT_SECURE_NO_WARNINGS
+
 #include <WinSock2.h>
 #include <stdio.h>
 #include "ServerSession.h" 
+
 
 #pragma comment (lib, "ws2_32.lib")
 
@@ -14,27 +18,63 @@ HANDLE mutex;
 ServerSession* root;
 ServerSession* cRoot;
 
-int main() {
+void StartS(ServerSession* session)
+{
+    DWORD dwWaitResult = WaitForSingleObject(mutex, INFINITE);  // no time-out interval     
 
-	GetCurrentDirectory(1024, songDir);
-
-	strcat(songDir, "\\MusicStorage\\");
-
-	Initialize();
-
-    HANDLE hListenThread = CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)serverListen, NULL, 0, NULL);
-    if (hListenThread == NULL)
+    if (root == NULL) root = session;
+    else
     {
-        printf("Unable to create thread.");
-        Close();
-        return -1;
+        session->_child = root;
+        root = session;
     }
 
-    WaitForSingleObject(hListenThread, INFINITE);
-    
-    Close();
+    ReleaseMutex(mutex);
+}
 
-    return 0;
+// close session if socket is disconnected.
+void CloseS(ServerSession* session)
+{
+    DWORD dwWaitResult = WaitForSingleObject(mutex, INFINITE);  // no time-out interval   
+
+    if (session->_parent == NULL) root = session->_child;
+    else session->_parent->_child = session->_child;
+
+    session->_parent = NULL;
+    session->_child = cRoot;
+    cRoot = session;
+    printf("[%d] Ended session.\n", (DWORD)cRoot);
+
+    ReleaseMutex(mutex);
+}
+
+// remove closed sessions from session list. 
+void RemoveS()
+{
+    DWORD dwWaitResult = WaitForSingleObject(mutex, INFINITE);  // no time-out interval    
+
+    while (cRoot != NULL)
+    {
+        ServerSession* child = cRoot->_child;
+        delete cRoot;
+        cRoot = child;
+    }
+
+    ReleaseMutex(mutex);
+}
+
+void Close() {
+    if (serverSock != INVALID_SOCKET)
+    {
+        closesocket(serverSock);
+        serverSock = INVALID_SOCKET;
+    }
+    if (mutex != NULL)
+    {
+        CloseHandle(mutex);
+        mutex = NULL;
+    }
+    WSACleanup();
 }
 
 bool Initialize() {
@@ -87,19 +127,6 @@ bool Initialize() {
 
     return true;
 }
-void Close() {
-    if (serverSock != INVALID_SOCKET)
-    {
-        closesocket(serverSock);
-        serverSock = INVALID_SOCKET;
-    }
-    if (mutex != NULL)
-    {
-        CloseHandle(mutex);
-        mutex = NULL;
-    }
-    WSACleanup();
-}
 
 void serverListen(void* param)
 {
@@ -116,47 +143,27 @@ void serverListen(void* param)
     }
 }
 
-void StartS(ServerSession* session)
-{
-    DWORD dwWaitResult = WaitForSingleObject(mutex, INFINITE);  // no time-out interval     
 
-    if (root == NULL) root = session;
-    else
+int main() {
+
+	GetCurrentDirectory(1024, songDir);
+
+	strcat(songDir, "\\MusicStorage\\");
+
+	Initialize();
+
+    HANDLE hListenThread = CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)serverListen, NULL, 0, NULL);
+    if (hListenThread == NULL)
     {
-        session->_child = root;
-        root = session;
+        printf("Unable to create thread.");
+        Close();
+        return -1;
     }
 
-    ReleaseMutex(mutex);
+    WaitForSingleObject(hListenThread, INFINITE);
+    
+    Close();
+
+    return 0;
 }
 
-// close session if socket is disconnected.
-void CloseS(ServerSession* session)
-{
-    DWORD dwWaitResult = WaitForSingleObject(mutex, INFINITE);  // no time-out interval   
-
-    if (session->_parent == NULL) root = session->_child;
-    else session->_parent->_child = session->_child;
-
-    session->_parent = NULL;
-    session->_child = cRoot;
-    cRoot = session;
-    printf("[%d] Ended session.\n", (DWORD)cRoot);
-
-    ReleaseMutex(mutex);
-}
-
-// remove closed sessions from session list. 
-void RemoveS()
-{
-    DWORD dwWaitResult = WaitForSingleObject(mutex, INFINITE);  // no time-out interval    
-
-    while (cRoot != NULL)
-    {
-        ServerSession* child = cRoot->_child;
-        delete cRoot;
-        cRoot = child;
-    }
-
-    ReleaseMutex(mutex);
-}

@@ -1,13 +1,13 @@
-#include "ServerSession.h"
-
+#define _WINSOCK_DEPRECATED_NO_WARNINGS 
+#define _CRT_SECURE_NO_WARNINGS
 
 #include <windows.h>
 #include <stdio.h>
 #include "ServerSession.h"
 #include "Files.h"
 
-extern void CloseSession(ServerSession* session);
-extern char musicDirectory[1024];
+extern void CloseS(ServerSession* session);
+extern char songDir[1024];
 
 void gTransferProc(void* param)
 {
@@ -72,7 +72,7 @@ void ServerSession::Transfer()
 			if (len <= 0)
 			{
 				printf("\n[%d] recv failed with error: %d\n", (int)this, WSAGetLastError());
-				CloseSession(this);
+				CloseS(this);
 				break;
 			}
 
@@ -128,7 +128,7 @@ void ServerSession::Transfer()
 					_response.offset = request->offset;
 
 					char filename[1024];
-					strcpy(filename, musicDirectory);
+					strcpy(filename, songDir);
 					strcat(filename, _musicNames[_musicIndex]);
 
 					HANDLE handle = CreateFileA(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
@@ -158,14 +158,14 @@ void ServerSession::Transfer()
 			int iResult = send(clientSock, _sendbuf, offset, 0);
 			if (iResult == SOCKET_ERROR)
 			{
-				CloseSession(this);
+				CloseS(this);
 				break;
 			}
 		}
 		catch (...)
 		{
 			printf("\n[%d] recv failed with error: %d\n", (int)this, WSAGetLastError());
-			CloseSession(this);
+			CloseS(this);
 			break;
 		}
 	}
@@ -179,7 +179,7 @@ void ServerSession::GetFiles()
 	}
 
 	char filter[1024];
-	strcpy(filter, musicDirectory);
+	strcpy(filter, songDir);
 	strcat(filter, "*.wav");
 
 	Files* root = NULL;
@@ -243,7 +243,7 @@ DWORD ServerSession::GetSize()
 	if (_musicIndex >= _musicCount) return -1;
 
 	char filename[1024];
-	strcpy(filename, musicDirectory);
+	strcpy(filename, songDir);
 	strcat(filename, _musicNames[_musicIndex]);
 
 	HANDLE handle = CreateFileA(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
