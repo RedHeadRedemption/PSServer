@@ -1,45 +1,47 @@
 #pragma once
 
-#define _WINSOCK_DEPRECATED_NO_WARNINGS 
-#define _CRT_SECURE_NO_WARNINGS
-struct SongData
+struct PacketInfo
 {
-	int startBits;		// 0x12345678 
-	int type;			// 0-status_info, 1-list_info, 2-list_block, 3-file_info, 4-file_block
-	int size;
-	int offset;
-	int count;
-	int serialnumber;
-	int stopBits;		//0x87654321 
+  int starBites;		// 0x12345678 
+  int type;			// 0-status_info, 1-list_info, 2-list_block, 3-file_info, 4-file_block
+  int size;
+  int offset;
+  int count;
+  int serialnumber;
+  int stopBits;		//0x87654321 
 };
 
-struct List
+struct ListInfo
 {
-	int offset;
-	int size;
+  int offset;
+  int size;
 };
 
-class ServerSession {
+#define BLOCK_SIZE 1024
+
+class ServerSession
+{
 public:
-	ServerSession(SOCKET clientSocket);
-	~ServerSession(void);
+  ServerSession(SOCKET clientSocket);
+  ~ServerSession(void);
 
-	ServerSession* _parent;
-	ServerSession* _child;
+  ServerSession* _parent;
+  ServerSession* _child;
 
-	void Transfer();
+  void TransferProc();
 
 private:
-	SOCKET clientSock;
-	char _recvbuf[1024];
-	char _sendbuf[1024];
-	SongData _response;
-	char** _musicNames;
-	int _musicCount;
-	int _musicIndex;
-	int _fileSize;
+  SOCKET _clientSocket;
+  char _recvbuf[BLOCK_SIZE];
+  char _sendbuf[BLOCK_SIZE];
+  PacketInfo _response;
+  char** _musicNames;
+  int _musicCount;
+  int _musicIndex;
+  int _fileSize;
 
-	void SetSendBuf(int type, int size = 0);
-	void GetFiles();
-	DWORD GetSize();
+  void SetSendBuf(int type, int size = 0);
+  void GetFiles();
+  DWORD GetSize();
 };
+

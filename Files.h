@@ -1,12 +1,12 @@
 #pragma once
 
-class Files {
+class Files
+{
 public:
-	Files();
-	~Files();
+  Files(void);
+  ~Files(void);
 
-
-	char* fileName;
-	Files* nextFile;
-
+  char* _fileName;
+  Files* _next;
 };
+

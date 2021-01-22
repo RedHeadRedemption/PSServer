@@ -1,169 +1,164 @@
 #define _WINSOCK_DEPRECATED_NO_WARNINGS 
 #define _CRT_SECURE_NO_WARNINGS
 
-#include <WinSock2.h>
+#include <winsock2.h>
 #include <stdio.h>
-#include "ServerSession.h" 
-
+#include "ServerSession.h"
 
 #pragma comment (lib, "ws2_32.lib")
 
 int port = 5000;
-SOCKET serverSock;
+char musicDirectory[1024];
+SOCKET listenSocket = INVALID_SOCKET;
+HANDLE mutex = NULL;
+ServerSession* root = NULL;
+ServerSession* closedRoot = NULL;
 
-char songDir[1024];
-
-HANDLE mutex;
-
-ServerSession* root;
-ServerSession* cRoot;
-
-void StartS(ServerSession* session)
+// start session if socket is connected.
+void StartSession(ServerSession* session)
 {
-    DWORD dwWaitResult = WaitForSingleObject(mutex, INFINITE);  // no time-out interval     
+  DWORD dwWaitResult = WaitForSingleObject(mutex, INFINITE);  // no time-out interval     
 
-    if (root == NULL) root = session;
-    else
-    {
-        session->_child = root;
-        root = session;
-    }
+  if (root == NULL) root = session;
+  else
+  {
+	session->_child = root;
+	root = session;
+  }
 
-    ReleaseMutex(mutex);
+  ReleaseMutex(mutex);
 }
 
 // close session if socket is disconnected.
-void CloseS(ServerSession* session)
+void CloseSession(ServerSession* session)
 {
-    DWORD dwWaitResult = WaitForSingleObject(mutex, INFINITE);  // no time-out interval   
+  DWORD dwWaitResult = WaitForSingleObject(mutex, INFINITE);  // no time-out interval   
 
-    if (session->_parent == NULL) root = session->_child;
-    else session->_parent->_child = session->_child;
+  if (session->_parent == NULL) root = session->_child;
+  else session->_parent->_child = session->_child;
 
-    session->_parent = NULL;
-    session->_child = cRoot;
-    cRoot = session;
-    printf("[%d] Ended session.\n", (DWORD)cRoot);
+  session->_parent = NULL;
+  session->_child = closedRoot;
+  closedRoot = session;
+  printf("[%d] Ended session.\n", (DWORD)closedRoot);
 
-    ReleaseMutex(mutex);
+  ReleaseMutex(mutex);
 }
 
 // remove closed sessions from session list. 
-void RemoveS()
+void RemoveSessions()
 {
-    DWORD dwWaitResult = WaitForSingleObject(mutex, INFINITE);  // no time-out interval    
+  DWORD dwWaitResult = WaitForSingleObject(mutex, INFINITE);  // no time-out interval    
 
-    while (cRoot != NULL)
-    {
-        ServerSession* child = cRoot->_child;
-        delete cRoot;
-        cRoot = child;
-    }
+  while (closedRoot != NULL)
+  {
+	ServerSession* child = closedRoot->_child;
+	delete closedRoot;
+	closedRoot = child;
+  }
 
-    ReleaseMutex(mutex);
+  ReleaseMutex(mutex);
 }
 
-void Close() {
-    if (serverSock != INVALID_SOCKET)
-    {
-        closesocket(serverSock);
-        serverSock = INVALID_SOCKET;
-    }
-    if (mutex != NULL)
-    {
-        CloseHandle(mutex);
-        mutex = NULL;
-    }
-    WSACleanup();
-}
-
-bool Initialize() {
-
-    WSADATA w_Data;
-
-    int iResult = WSAStartup(MAKEWORD(2, 2), &w_Data);
-    if (iResult != 0)
-    {
-        printf("WSAStartup failed with error: %d\n", iResult);
-        return false;
-    }
-
-    // create mutex to synthro
-    mutex = CreateMutex(NULL, FALSE, NULL);
-    if (mutex == NULL)
-    {
-        printf("CreateMutex error: %d\n", GetLastError());
-        return false;
-    }
-
-    // create socket for listening.
-    serverSock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (serverSock == INVALID_SOCKET)
-    {
-        printf("socket failed with error: %d\n", WSAGetLastError());
-        return false;
-    }
-
-    // bind listen socket.
-    SOCKADDR_IN sa;
-    memset(&sa, 0, sizeof(SOCKADDR_IN));
-    sa.sin_family = AF_INET;
-    sa.sin_port = htons(port);
-    sa.sin_addr.s_addr = htonl(INADDR_ANY);
-    if (bind(serverSock, (LPSOCKADDR)&sa, sizeof(SOCKADDR_IN)) == SOCKET_ERROR)
-    {
-        printf("bind failed with error: %d\n", WSAGetLastError());
-        Close();
-        return false;
-    }
-
-    // start listen
-    if (listen(serverSock, SOMAXCONN) == SOCKET_ERROR) {
-        printf("listen failed with error: %d\n", WSAGetLastError());
-        Close();
-        return false;
-    }
-    printf("[Server] Listening at port %d...\n", port);
-
-    return true;
-}
-
-void serverListen(void* param)
+void ListenProc(void* param)
 {
-    while (true)
-    {
-        SOCKET clientSocket = accept(serverSock, NULL, NULL);
-        if (clientSocket == INVALID_SOCKET)
-        {
-            printf("[Server] accept failed with error: %d\n", WSAGetLastError());
-            continue;
-        }
-        StartS(new ServerSession(clientSocket));
-        RemoveS();
-    }
+  while (true)
+  {
+	SOCKET clientSocket = accept(listenSocket, NULL, NULL);
+	if (clientSocket == INVALID_SOCKET)
+	{
+	  printf("[Server] accept failed with error: %d\n", WSAGetLastError());
+	  continue;
+	}
+	StartSession(new ServerSession(clientSocket));
+	RemoveSessions();
+  }
 }
 
+void Close()
+{
+  if (listenSocket != INVALID_SOCKET)
+  {
+	closesocket(listenSocket);
+	listenSocket = INVALID_SOCKET;
+  }
+  if (mutex != NULL)
+  {
+	CloseHandle(mutex);
+	mutex = NULL;
+  }
+  WSACleanup();
+}
 
-int main() {
+bool Initialize()
+{
+  WSADATA wsaData;
+  int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
+  if (iResult != 0)
+  {
+	printf("WSAStartup failed with error: %d\n", iResult);
+	return false;
+  }
 
-	GetCurrentDirectory(1024, songDir);
+  // create mutex to synthro
+  mutex = CreateMutex(NULL, FALSE, NULL);
+  if (mutex == NULL)
+  {
+	printf("CreateMutex error: %d\n", GetLastError());
+	return false;
+  }
 
-	strcat(songDir, "\\MusicStorage\\");
+  // create socket for listening.
+  listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  if (listenSocket == INVALID_SOCKET)
+  {
+	printf("socket failed with error: %d\n", WSAGetLastError());
+	return false;
+  }
 
-	Initialize();
+  // bind listen socket.
+  SOCKADDR_IN sa;
+  memset(&sa, 0, sizeof(SOCKADDR_IN));
+  sa.sin_family = AF_INET;
+  sa.sin_port = htons(port);
+  sa.sin_addr.s_addr = htonl(INADDR_ANY);
+  if (bind(listenSocket, (LPSOCKADDR)&sa, sizeof(SOCKADDR_IN)) == SOCKET_ERROR)
+  {
+	printf("bind failed with error: %d\n", WSAGetLastError());
+	Close();
+	return false;
+  }
 
-    HANDLE hListenThread = CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)serverListen, NULL, 0, NULL);
-    if (hListenThread == NULL)
-    {
-        printf("Unable to create thread.");
-        Close();
-        return -1;
-    }
+  // start listen
+  if (listen(listenSocket, SOMAXCONN) == SOCKET_ERROR) {
+	printf("listen failed with error: %d\n", WSAGetLastError());
+	Close();
+	return false;
+  }
+  printf("[Server] Listening at port %d...\n", port);
 
-    WaitForSingleObject(hListenThread, INFINITE);
-    
-    Close();
+  return true;
+}
 
-    return 0;
+int main()
+{
+  GetCurrentDirectoryA(1024, musicDirectory);
+  strcat(musicDirectory, "\\MusicStorage\\");
+  if (!Initialize()) return -1;
+
+  // create thread
+  HANDLE hListenThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ListenProc, NULL, 0, NULL);
+  if (hListenThread == NULL)
+  {
+	printf("Failed to create thread.");
+	Close();
+	return -1;
+  }
+
+  // wait until thread ends.
+  WaitForSingleObject(hListenThread, INFINITE);
+
+  Close();
+  return 0;
 }
 

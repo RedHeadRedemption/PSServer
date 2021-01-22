@@ -1,17 +1,18 @@
-#include <Windows.h>
+#include <windows.h>
 #include "Files.h"
 
-Files::Files() {
-
-	fileName = NULL;
-	nextFile = NULL;
-
+Files::Files(void)
+{
+  _fileName = NULL;
+  _next = NULL;
 }
 
-Files::~Files() {
 
-	if (fileName != NULL) {
-		delete[] fileName;
-		fileName = NULL;
-	}
+Files::~Files(void)
+{
+  if (_fileName != NULL)
+  {
+	delete[] _fileName;
+	_fileName = NULL;
+  }
 }
